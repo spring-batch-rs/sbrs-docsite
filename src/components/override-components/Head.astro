@@ -39,6 +39,11 @@ if (theme.fonts.font_family.secondary) {
 <!-- Custom favicon -->
 <link rel="shortcut icon" href={`${base}/favicon.svg`} type="image/svg+xml" />
 
+<!-- Force light theme -->
+<script is:inline>
+  localStorage.setItem("starlight-theme", "light");
+</script>
+
 <!-- google font css -->
 <AstroFont
     config={[

@@ -1,16 +1,16 @@
 {
   "site": {
     "title": "Spring Batch RS",
-    "logo": "/logo-pipeline-light.svg",
-    "logo_darkmode": "/logo-pipeline-dark.svg",
-    "logo_width": "40",
-    "logo_height": "40",
+    "logo": "/logo-v4.png",
+    "logo_darkmode": "/logo-v4.png",
+    "logo_width": "120",
+    "logo_height": "120",
     "logo_text": "Spring Batch RS"
   },
 
   "settings": {
     "search": true,
-    "theme_switcher": true
+    "theme_switcher": false
   },
 
   "params": {
