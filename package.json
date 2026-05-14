@@ -27,5 +27,9 @@
     "astro-vtbot": "^2.1.12",
     "tailwindcss": "^4.2.2",
     "typescript": "^6.0.2"
+  },
+  "resolutions": {
+    "mermaid": "^11.15.0",
+    "uuid": "^14.0.0"
   }
 }
