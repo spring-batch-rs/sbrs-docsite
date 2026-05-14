@@ -64,11 +64,11 @@
     },
     {
       "label": "Tasklets",
-      "autogenerate": { "directory": "tasklets" }
+      "items": [{ "autogenerate": { "directory": "tasklets" } }]
     },
     {
       "label": "Tutorials",
-      "autogenerate": { "directory": "tutorials" }
+      "items": [{ "autogenerate": { "directory": "tutorials" } }]
     },
     {
       "label": "Reference",
