@@ -22,16 +22,16 @@ import { LinkCard, CardGrid } from "@astrojs/starlight/components";
 
 <div class="bench-section">
   <span class="bench-tag">Performance · benchmark reproductible</span>
-  <h2>4.5× faster than Spring Batch Java</h2>
-  <p class="bench-subtitle">10 million financial transactions · CSV → PostgreSQL → XML · same chunk size, same connection pool</p>
+  <h2>1.75× faster than Spring Batch Java</h2>
+  <p class="bench-subtitle">10 million financial transactions · CSV → PostgreSQL → XML → PostgreSQL · incl. CSV generation · same chunk size, same connection pool</p>
   <div class="bench-grid">
     <div class="bench-row">
       <span class="bench-label">Total pipeline</span>
       <div class="bench-track">
-        <div class="bench-bar-rust" style="width: 22.5%">42s</div>
+        <div class="bench-bar-rust" style="width: 57.1%">114s</div>
         <div class="bench-bar-java"></div>
       </div>
-      <span class="bench-delta"><strong>4.5×</strong> faster · 187s</span>
+      <span class="bench-delta"><strong>1.75×</strong> faster · 200s</span>
     </div>
     <div class="bench-row">
       <span class="bench-label">Peak memory</span>
@@ -121,7 +121,7 @@ JobBuilder::new().start(&step).build().run();
   />
   <LinkCard
     title="Java vs Rust Benchmark"
-    description="Methodology, full numbers & how to reproduce on your own infrastructure."
+    description="10M transactions, 3-step pipeline, full numbers & how to reproduce on your own infrastructure."
     href="/reference/java-vs-rust-benchmark/"
   />
   <LinkCard
