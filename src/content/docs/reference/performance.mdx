@@ -260,22 +260,22 @@ fn log_memory_usage() {
 
 **1. Clone Only When Necessary:**
 ```rust
-// Inefficient: Unnecessary clone
+// Inefficient: Cloning after taking by value
 impl ItemProcessor<Record, Record> for MyProcessor {
-    fn process(&self, item: &Record) -> ItemProcessorResult<Record> {
-        let mut cloned = item.clone();  // Expensive
-        cloned.field = transform(cloned.field);
-        Ok(cloned)
+    fn process(&self, item: Record) -> ItemProcessorResult<Record> {
+        let mut owned = item;
+        owned.field = transform(owned.field);
+        Ok(Some(owned))
     }
 }
 
-// Efficient: Transform in-place when possible
+// Efficient: Transform and move
 impl ItemProcessor<Record, Record> for MyProcessor {
-    fn process(&self, item: &Record) -> ItemProcessorResult<Record> {
-        Ok(Record {
-            field: transform(&item.field),
-            ..item.clone()  // Only clone necessary parts
-        })
+    fn process(&self, item: Record) -> ItemProcessorResult<Record> {
+        Ok(Some(Record {
+            field: transform(item.field),
+            ..item
+        }))
     }
 }
 ```
@@ -287,15 +287,15 @@ use std::borrow::Cow;
 struct Processor;
 
 impl ItemProcessor<String, String> for Processor {
-    fn process(&self, item: &String) -> ItemProcessorResult<String> {
+    fn process(&self, item: String) -> ItemProcessorResult<String> {
         // Use Cow to avoid unnecessary cloning
         let result: Cow<str> = if item.contains("special") {
             Cow::Owned(item.to_uppercase())
         } else {
-            Cow::Borrowed(item)
+            Cow::Owned(item)
         };
 
-        Ok(result.into_owned())
+        Ok(Some(result.into_owned()))
     }
 }
 ```

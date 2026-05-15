@@ -60,9 +60,9 @@ struct Person {
 struct AdultFilter;
 
 impl ItemProcessor<Person, Person> for AdultFilter {
-    fn process(&self, item: &Person) -> ItemProcessorResult<Person> {
+    fn process(&self, item: Person) -> ItemProcessorResult<Person> {
         if item.age >= 18 {
-            Ok(Some(item.clone())) // keep
+            Ok(Some(item)) // keep
         } else {
             Ok(None) // discard — increments filter_count, not an error
         }
@@ -146,7 +146,7 @@ struct EnrichedOrder { id: u32, customer: String, amount: f64, tax: f64, total: 
 // Step 1: parse raw strings into typed values
 struct ParseProcessor;
 impl ItemProcessor<RawOrder, ParsedOrder> for ParseProcessor {
-    fn process(&self, item: &RawOrder) -> ItemProcessorResult<ParsedOrder> {
+    fn process(&self, item: RawOrder) -> ItemProcessorResult<ParsedOrder> {
         let id = item.id.trim().parse().ok();
         let amount = item.amount.trim().parse().ok();
         match (id, amount) {
@@ -161,15 +161,15 @@ impl ItemProcessor<RawOrder, ParsedOrder> for ParseProcessor {
 // Step 2: filter orders below threshold
 struct ValidateProcessor { min_amount: f64 }
 impl ItemProcessor<ParsedOrder, ParsedOrder> for ValidateProcessor {
-    fn process(&self, item: &ParsedOrder) -> ItemProcessorResult<ParsedOrder> {
-        if item.amount < self.min_amount { Ok(None) } else { Ok(Some(item.clone())) }
+    fn process(&self, item: ParsedOrder) -> ItemProcessorResult<ParsedOrder> {
+        if item.amount < self.min_amount { Ok(None) } else { Ok(Some(item)) }
     }
 }
 
 // Step 3: add tax and total
 struct EnrichProcessor;
 impl ItemProcessor<ParsedOrder, EnrichedOrder> for EnrichProcessor {
-    fn process(&self, item: &ParsedOrder) -> ItemProcessorResult<EnrichedOrder> {
+    fn process(&self, item: ParsedOrder) -> ItemProcessorResult<EnrichedOrder> {
         let tax = (item.amount * 0.20 * 100.0).round() / 100.0;
         Ok(Some(EnrichedOrder {
             id: item.id, customer: item.customer.clone(),
@@ -350,7 +350,7 @@ struct OutputRecord {
 // A custom processor that filters out records from the "Test" category.
 struct FilterProcessor;
 impl ItemProcessor<InputRecord, IntermediateRecord> for FilterProcessor {
-    fn process(&self, item: &InputRecord) -> ItemProcessorResult<IntermediateRecord> {
+    fn process(&self, item: InputRecord) -> ItemProcessorResult<IntermediateRecord> {
         if item.category == "Test" {
             println!("Filtering out test record: {{}}", item.name);
             return Ok(None); // Returning None filters the item.
@@ -369,7 +369,7 @@ impl ItemProcessor<InputRecord, IntermediateRecord> for FilterProcessor {
 // A custom processor that transforms an IntermediateRecord into an OutputRecord.
 struct TransformProcessor;
 impl ItemProcessor<IntermediateRecord, OutputRecord> for TransformProcessor {
-    fn process(&self, item: &IntermediateRecord) -> ItemProcessorResult<OutputRecord> {
+    fn process(&self, item: IntermediateRecord) -> ItemProcessorResult<OutputRecord> {
         Ok(Some(OutputRecord {
             record_id: format!("REC-{{}}", item.id),
             description: format!("{{}} (Value: {{}})", item.name, item.value),

@@ -399,7 +399,7 @@ struct ProcessedPerson {
 struct PersonProcessor;
 
 impl ItemProcessor<RawPerson, ProcessedPerson> for PersonProcessor {
-    fn process(&self, item: &RawPerson) -> ItemProcessorResult<ProcessedPerson> {
+    fn process(&self, item: RawPerson) -> ItemProcessorResult<ProcessedPerson> {
         // Split name
         let parts: Vec<&str> = item.name.split_whitespace().collect();
         if parts.len() < 2 {
@@ -618,7 +618,7 @@ struct FactProcessor {
 }
 
 impl ItemProcessor<TransactionSource, TransactionFact> for FactProcessor {
-    fn process(&self, item: &TransactionSource) -> ItemProcessorResult<TransactionFact> {
+    fn process(&self, item: TransactionSource) -> ItemProcessorResult<TransactionFact> {
         let total_amount = item.quantity as f64 * item.unit_price;
 
         let cost = self.product_costs

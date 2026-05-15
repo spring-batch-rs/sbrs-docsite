@@ -389,7 +389,7 @@ struct OrderEnricher {
 }
 
 impl ItemProcessor<OrderInput, EnrichedOrder> for OrderEnricher {
-    fn process(&self, item: &OrderInput) -> ItemProcessorResult<EnrichedOrder> {
+    fn process(&self, item: OrderInput) -> ItemProcessorResult<EnrichedOrder> {
         let (product_name, unit_price) = self.catalog
             .get(&item.product_id)
             .cloned()
@@ -400,7 +400,7 @@ impl ItemProcessor<OrderInput, EnrichedOrder> for OrderEnricher {
         let total = unit_price * item.quantity as f64;
 
         Ok(EnrichedOrder {
-            order_id: item.order_id.clone(),
+            order_id: item.order_id,
             product_id: item.product_id,
             product_name,
             quantity: item.quantity,
@@ -439,7 +439,7 @@ struct ValidatedRecord {
 struct RecordValidator;
 
 impl ItemProcessor<RawRecord, ValidatedRecord> for RecordValidator {
-    fn process(&self, item: &RawRecord) -> ItemProcessorResult<ValidatedRecord> {
+    fn process(&self, item: RawRecord) -> ItemProcessorResult<ValidatedRecord> {
         // Validate ID
         let id = item.id.parse::<u32>()
             .map_err(|_| spring_batch_rs::error::BatchError::ItemProcessor(
@@ -462,7 +462,7 @@ impl ItemProcessor<RawRecord, ValidatedRecord> for RecordValidator {
         Ok(ValidatedRecord {
             id,
             value,
-            status: item.status.clone(),
+            status: item.status,
         })
     }
 }
@@ -530,7 +530,7 @@ struct ProcessedFeedItem {
 struct FeedProcessor;
 
 impl ItemProcessor<FeedItem, ProcessedFeedItem> for FeedProcessor {
-    fn process(&self, item: &FeedItem) -> ItemProcessorResult<ProcessedFeedItem> {
+    fn process(&self, item: FeedItem) -> ItemProcessorResult<ProcessedFeedItem> {
         // Clean HTML from description
         let summary = item.description
             .replace("<p>", "")
@@ -544,10 +544,10 @@ impl ItemProcessor<FeedItem, ProcessedFeedItem> for FeedProcessor {
             .collect();
 
         Ok(ProcessedFeedItem {
-            title: item.title.clone(),
-            url: item.link.clone(),
+            title: item.title,
+            url: item.link,
             summary,
-            published: item.pub_date.clone(),
+            published: item.pub_date,
             tags,
         })
     }

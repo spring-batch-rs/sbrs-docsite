@@ -125,11 +125,11 @@ use sea_orm::ActiveValue::Set;
 struct DtoToActiveModelProcessor;
 
 impl ItemProcessor<ProductDto, products::ActiveModel> for DtoToActiveModelProcessor {
-    fn process(&self, item: &ProductDto) -> ItemProcessorResult<products::ActiveModel> {
+    fn process(&self, item: ProductDto) -> ItemProcessorResult<products::ActiveModel> {
         Ok(Some(products::ActiveModel {
             id: Set(item.id),
-            name: Set(item.name.clone()),
-            category: Set(item.category.clone()),
+            name: Set(item.name),
+            category: Set(item.category),
             price: Set(item.price),
             in_stock: Set(item.in_stock),
         }))
@@ -160,10 +160,10 @@ let query = orders::Entity::find()
 struct ModelToCsvProcessor;
 
 impl ItemProcessor<products::Model, ProductCsv> for ModelToCsvProcessor {
-    fn process(&self, item: &products::Model) -> ItemProcessorResult<ProductCsv> {
+    fn process(&self, item: products::Model) -> ItemProcessorResult<ProductCsv> {
         Ok(Some(ProductCsv {
             id: item.id,
-            name: item.name.clone(),
+            name: item.name,
             price: item.price,
         }))
     }

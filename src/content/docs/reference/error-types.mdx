@@ -82,7 +82,7 @@ impl ItemReader<Record> for MyReader {
 **Example:**
 ```rust
 impl ItemProcessor<Input, Output> for MyProcessor {
-    fn process(&self, item: &Input) -> ItemProcessorResult<Output> {
+    fn process(&self, item: Input) -> ItemProcessorResult<Output> {
         // Validation error
         if item.age < 0 {
             return Err(BatchError::ItemProcessor(
@@ -398,7 +398,7 @@ fn validate_record(record: &Record) -> Result<(), BatchError> {
 **Example:**
 ```rust
 impl ItemProcessor<Record, Record> for MyProcessor {
-    fn process(&self, item: &Record) -> ItemProcessorResult<Record> {
+    fn process(&self, item: Record) -> ItemProcessorResult<Record> {
         // Recoverable error (can skip)
         if item.age < 0 {
             return Err(BatchError::ItemProcessor(
@@ -420,7 +420,7 @@ impl ItemProcessor<Record, Record> for MyProcessor {
             ));
         }
 
-        Ok(item.clone())
+        Ok(Some(item))
     }
 }
 ```
@@ -499,8 +499,8 @@ impl ItemReader<Record> for MyReader {
 use log::{error, warn};
 
 impl ItemProcessor<Record, Record> for MyProcessor {
-    fn process(&self, item: &Record) -> ItemProcessorResult<Record> {
-        if let Err(e) = self.validate(item) {
+    fn process(&self, item: Record) -> ItemProcessorResult<Record> {
+        if let Err(e) = self.validate(&item) {
             // Log error details
             error!("Validation failed for record {}: {}", item.id, e);
 
@@ -510,7 +510,7 @@ impl ItemProcessor<Record, Record> for MyProcessor {
             ));
         }
 
-        Ok(item.clone())
+        Ok(Some(item))
     }
 }
 ```

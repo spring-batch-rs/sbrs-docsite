@@ -19,12 +19,12 @@ pub trait ItemProcessor<I, O> {
     /// - `Ok(Some(processed_item))` - Successfully processed, pass to writer
     /// - `Ok(None)` - Item filtered out, not passed to writer
     /// - `Err(BatchError)` - Processing failed
-    fn process(&self, item: &I) -> ItemProcessorResult<O>;
+    fn process(&self, item: I) -> ItemProcessorResult<O>;
 }
 ```
 
 <Aside type="tip">
-  The processor takes a **reference** to the input item, allowing zero-copy transformations when `I == O`.
+  The processor takes the input item **by value**, enabling zero-cost pass-through when `I == O` — no allocation required.
 </Aside>
 
 ## Type Alias
@@ -56,12 +56,11 @@ pub type ItemProcessorResult<O> = Result<Option<O>, BatchError>;
 
 ### PassThroughProcessor
 
-A no-op processor that clones items without transformation.
+A zero-cost, no-allocation processor that passes items through without transformation.
 
 ```rust
 use spring_batch_rs::core::item::PassThroughProcessor;
 
-#[derive(Clone)]
 struct Product {
     id: u32,
     name: String,
@@ -87,7 +86,7 @@ Transform data from one structure to another:
 use spring_batch_rs::core::item::{ItemProcessor, ItemProcessorResult};
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize)]
 struct RawProduct {
     id: u32,
     name: String,
@@ -104,10 +103,10 @@ struct Product {
 struct ProductTransformer;
 
 impl ItemProcessor<RawProduct, Product> for ProductTransformer {
-    fn process(&self, item: &RawProduct) -> ItemProcessorResult<Product> {
+    fn process(&self, item: RawProduct) -> ItemProcessorResult<Product> {
         Ok(Some(Product {
             id: item.id,
-            name: item.name.clone(),
+            name: item.name,
             price_dollars: item.price_cents as f64 / 100.0,
         }))
     }
@@ -121,7 +120,6 @@ Validate items and reject invalid data:
 ```rust
 use spring_batch_rs::error::BatchError;
 
-#[derive(Clone)]
 struct User {
     email: String,
     age: i32,
@@ -130,7 +128,7 @@ struct User {
 struct UserValidator;
 
 impl ItemProcessor<User, User> for UserValidator {
-    fn process(&self, item: &User) -> ItemProcessorResult<User> {
+    fn process(&self, item: User) -> ItemProcessorResult<User> {
         // Validate email format
         if !item.email.contains('@') {
             return Err(BatchError::ItemProcessor(
@@ -145,7 +143,7 @@ impl ItemProcessor<User, User> for UserValidator {
             ));
         }
 
-        Ok(Some(item.clone()))
+        Ok(Some(item))
     }
 }
 ```
@@ -161,7 +159,6 @@ Return `Ok(None)` to silently discard items — they are not passed to the write
 ```rust
 use spring_batch_rs::core::item::{ItemProcessor, ItemProcessorResult};
 
-#[derive(Clone)]
 struct Person {
     name: String,
     age: u32,
@@ -170,9 +167,9 @@ struct Person {
 struct AdultFilter;
 
 impl ItemProcessor<Person, Person> for AdultFilter {
-    fn process(&self, item: &Person) -> ItemProcessorResult<Person> {
+    fn process(&self, item: Person) -> ItemProcessorResult<Person> {
         if item.age >= 18 {
-            Ok(Some(item.clone())) // keep adults
+            Ok(Some(item)) // keep adults
         } else {
             Ok(None) // filter out minors — counted in filter_count
         }
@@ -199,7 +196,6 @@ Add additional information to items:
 ```rust
 use std::collections::HashMap;
 
-#[derive(Clone)]
 struct Order {
     id: u32,
     product_id: u32,
@@ -221,7 +217,7 @@ struct OrderEnricher {
 }
 
 impl ItemProcessor<Order, EnrichedOrder> for OrderEnricher {
-    fn process(&self, item: &Order) -> ItemProcessorResult<EnrichedOrder> {
+    fn process(&self, item: Order) -> ItemProcessorResult<EnrichedOrder> {
         let (product_name, unit_price) = self.product_catalog
             .get(&item.product_id)
             .cloned()
@@ -251,7 +247,7 @@ Clean and normalize data:
 struct DataCleanser;
 
 impl ItemProcessor<String, String> for DataCleanser {
-    fn process(&self, item: &String) -> ItemProcessorResult<String> {
+    fn process(&self, item: String) -> ItemProcessorResult<String> {
         let cleaned = item
             .trim()                          // Remove whitespace
             .to_lowercase()                  // Normalize case
@@ -270,7 +266,6 @@ impl ItemProcessor<String, String> for DataCleanser {
 Apply different logic based on item properties:
 
 ```rust
-#[derive(Clone)]
 struct Transaction {
     amount: f64,
     category: String,
@@ -289,7 +284,7 @@ struct TaxCalculator {
 }
 
 impl ItemProcessor<Transaction, ProcessedTransaction> for TaxCalculator {
-    fn process(&self, item: &Transaction) -> ItemProcessorResult<ProcessedTransaction> {
+    fn process(&self, item: Transaction) -> ItemProcessorResult<ProcessedTransaction> {
         // Different tax rates by category
         let tax_rate = match item.category.as_str() {
             "food" => 0.05,
@@ -303,7 +298,7 @@ impl ItemProcessor<Transaction, ProcessedTransaction> for TaxCalculator {
 
         Ok(Some(ProcessedTransaction {
             amount: item.amount,
-            category: item.category.clone(),
+            category: item.category,
             tax,
             final_amount,
         }))
@@ -319,7 +314,7 @@ Common string operations:
 struct StringProcessor;
 
 impl ItemProcessor<String, String> for StringProcessor {
-    fn process(&self, item: &String) -> ItemProcessorResult<String> {
+    fn process(&self, item: String) -> ItemProcessorResult<String> {
         Ok(Some(item.to_uppercase()
                .replace(" ", "_")
                .trim()
@@ -345,9 +340,9 @@ struct ProcessorChain<I, M, O> {
 }
 
 impl<I, M, O> ItemProcessor<I, O> for ProcessorChain<I, M, O> {
-    fn process(&self, item: &I) -> ItemProcessorResult<O> {
+    fn process(&self, item: I) -> ItemProcessorResult<O> {
         match self.first.process(item)? {
-            Some(intermediate) => self.second.process(&intermediate),
+            Some(intermediate) => self.second.process(intermediate),
             None => Ok(None), // propagate filter
         }
     }
@@ -366,7 +361,7 @@ struct Counter {
 }
 
 impl ItemProcessor<String, String> for Counter {
-    fn process(&self, item: &String) -> ItemProcessorResult<String> {
+    fn process(&self, item: String) -> ItemProcessorResult<String> {
         let mut count = self.count.lock().unwrap();
         *count += 1;
 
@@ -391,11 +386,11 @@ struct ApiEnricher {
 }
 
 impl ItemProcessor<String, String> for ApiEnricher {
-    fn process(&self, item: &String) -> ItemProcessorResult<String> {
+    fn process(&self, item: String) -> ItemProcessorResult<String> {
         // Block on async operation
         self.runtime.block_on(async {
             // Call external API
-            let response = fetch_api_data(item).await?;
+            let response = fetch_api_data(&item).await?;
             Ok(Some(response))
         })
     }
@@ -417,13 +412,13 @@ Use with `skip_limit()` to continue processing:
 
 ```rust
 impl ItemProcessor<Data, Data> for MyProcessor {
-    fn process(&self, item: &Data) -> ItemProcessorResult<Data> {
+    fn process(&self, item: Data) -> ItemProcessorResult<Data> {
         if item.is_invalid() {
             return Err(BatchError::ItemProcessor(
                 "Invalid data".to_string()
             ));
         }
-        Ok(Some(item.clone()))
+        Ok(Some(item))
     }
 }
 
@@ -443,13 +438,13 @@ Stop the job immediately:
 
 ```rust
 impl ItemProcessor<Data, Data> for MyProcessor {
-    fn process(&self, item: &Data) -> ItemProcessorResult<Data> {
+    fn process(&self, item: Data) -> ItemProcessorResult<Data> {
         if critical_failure() {
             return Err(BatchError::Fatal(
                 "Critical system error".to_string()
             ));
         }
-        Ok(Some(item.clone()))
+        Ok(Some(item))
     }
 }
 ```
@@ -503,7 +498,7 @@ mod tests {
 ### ETL Pipeline
 
 ```rust
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize)]
 struct SourceRecord {
     customer_id: String,
     amount: String,
@@ -520,7 +515,7 @@ struct TargetRecord {
 struct ETLProcessor;
 
 impl ItemProcessor<SourceRecord, TargetRecord> for ETLProcessor {
-    fn process(&self, item: &SourceRecord) -> ItemProcessorResult<TargetRecord> {
+    fn process(&self, item: SourceRecord) -> ItemProcessorResult<TargetRecord> {
         // Parse customer ID
         let customer_id = item.customer_id.parse::<i64>()
             .map_err(|e| BatchError::ItemProcessor(
@@ -568,8 +563,8 @@ impl PIIRedactor {
 }
 
 impl ItemProcessor<String, String> for PIIRedactor {
-    fn process(&self, item: &String) -> ItemProcessorResult<String> {
-        let mut redacted = item.clone();
+    fn process(&self, item: String) -> ItemProcessorResult<String> {
+        let mut redacted = item;
 
         // Redact emails
         redacted = self.email_pattern.replace_all(&redacted, "[EMAIL]").to_string();

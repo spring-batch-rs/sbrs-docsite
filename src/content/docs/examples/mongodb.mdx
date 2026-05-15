@@ -212,7 +212,7 @@ struct ProcessedBook {
 struct BookProcessor;
 
 impl ItemProcessor<RawBook, ProcessedBook> for BookProcessor {
-    fn process(&self, item: &RawBook) -> ItemProcessorResult<ProcessedBook> {
+    fn process(&self, item: RawBook) -> ItemProcessorResult<ProcessedBook> {
         let price = item.price.parse::<f64>()
             .map_err(|e| spring_batch_rs::error::BatchError::ItemProcessor(
                 format!("Invalid price: {}", e)
@@ -370,7 +370,7 @@ struct ModernUser {
 struct UserMigrationProcessor;
 
 impl ItemProcessor<LegacyUser, ModernUser> for UserMigrationProcessor {
-    fn process(&self, item: &LegacyUser) -> ItemProcessorResult<ModernUser> {
+    fn process(&self, item: LegacyUser) -> ItemProcessorResult<ModernUser> {
         let parts: Vec<&str> = item.full_name.split_whitespace().collect();
         let (first_name, last_name) = if parts.len() >= 2 {
             (parts[0].to_string(), parts[1..].join(" "))

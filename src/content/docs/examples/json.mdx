@@ -218,7 +218,7 @@ struct ActiveUser {
 struct ActiveUserFilter;
 
 impl ItemProcessor<InputUser, ActiveUser> for ActiveUserFilter {
-    fn process(&self, item: &InputUser) -> ItemProcessorResult<ActiveUser> {
+    fn process(&self, item: InputUser) -> ItemProcessorResult<ActiveUser> {
         if !item.active {
             return Err(BatchError::ItemProcessor(
                 format!("User {} is not active", item.id)
@@ -227,8 +227,8 @@ impl ItemProcessor<InputUser, ActiveUser> for ActiveUserFilter {
 
         Ok(ActiveUser {
             id: item.id,
-            name: item.name.clone(),
-            email: item.email.clone(),
+            name: item.name,
+            email: item.email,
         })
     }
 }
@@ -354,7 +354,7 @@ struct OrderEnricher {
 }
 
 impl ItemProcessor<OrderInput, EnrichedOrder> for OrderEnricher {
-    fn process(&self, item: &OrderInput) -> ItemProcessorResult<EnrichedOrder> {
+    fn process(&self, item: OrderInput) -> ItemProcessorResult<EnrichedOrder> {
         let (product_name, unit_price) = self.product_catalog
             .get(&item.product_id)
             .cloned()
@@ -431,7 +431,7 @@ struct ValidatedUser {
 struct UserValidator;
 
 impl ItemProcessor<RawUser, ValidatedUser> for UserValidator {
-    fn process(&self, item: &RawUser) -> ItemProcessorResult<ValidatedUser> {
+    fn process(&self, item: RawUser) -> ItemProcessorResult<ValidatedUser> {
         // Validate and parse ID
         let id = item.id.parse::<u32>()
             .map_err(|_| BatchError::ItemProcessor(
@@ -562,13 +562,13 @@ struct InternalUser {
 struct ApiTransformer;
 
 impl ItemProcessor<ApiResponse, InternalUser> for ApiTransformer {
-    fn process(&self, item: &ApiResponse) -> ItemProcessorResult<InternalUser> {
+    fn process(&self, item: ApiResponse) -> ItemProcessorResult<InternalUser> {
         Ok(InternalUser {
             id: item.user_id,
-            name: item.full_name.clone(),
+            name: item.full_name,
             email: item.email_address.to_lowercase(),
             active: item.is_active,
-            created: item.created_at.clone(),
+            created: item.created_at,
         })
     }
 }
@@ -612,14 +612,14 @@ struct SummaryAggregator {
 }
 
 impl ItemProcessor<Product, Product> for SummaryAggregator {
-    fn process(&self, item: &Product) -> ItemProcessorResult<Product> {
+    fn process(&self, item: Product) -> ItemProcessorResult<Product> {
         let mut total = self.total.lock().unwrap();
         let mut count = self.count.lock().unwrap();
 
         *total += item.price;
         *count += 1;
 
-        Ok(item.clone())
+        Ok(Some(item))
     }
 }
 ```
@@ -632,13 +632,13 @@ struct PriceFilter {
 }
 
 impl ItemProcessor<Product, Product> for PriceFilter {
-    fn process(&self, item: &Product) -> ItemProcessorResult<Product> {
+    fn process(&self, item: Product) -> ItemProcessorResult<Product> {
         if item.price < self.min_price {
             return Err(BatchError::ItemProcessor(
                 format!("Price {} below minimum {}", item.price, self.min_price)
             ));
         }
-        Ok(item.clone())
+        Ok(Some(item))
     }
 }
 ```
