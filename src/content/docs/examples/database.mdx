@@ -111,7 +111,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### Writing to PostgreSQL
 
 ```rust
-use spring_batch_rs::item::rdbc::postgres::PostgresItemWriterBuilder;
+use spring_batch_rs::item::rdbc::RdbcItemWriterBuilder;
 use spring_batch_rs::item::csv::CsvItemReaderBuilder;
 use spring_batch_rs::core::item::PassThroughProcessor;
 
@@ -125,18 +125,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .from_path("persons.csv")?;
 
     // Write to PostgreSQL
-    let writer = PostgresItemWriterBuilder::new()
-        .pool(pool)
+    let writer = RdbcItemWriterBuilder::<Person>::new()
+        .postgres(&pool)
         .table("persons")
-        .binder(|query, person: &Person| {
-            query.push_values([person], |mut b, p| {
-                b.push_bind(&p.first_name)
-                 .push_bind(&p.last_name)
-                 .push_bind(&p.email)
-                 .push_bind(&p.birth_date);
-            });
-        })
-        .build();
+        .column("first_name", |p: &Person| p.first_name.as_str().into())
+        .column("last_name", |p: &Person| p.last_name.as_str().into())
+        .column("email", |p: &Person| p.email.as_str().into())
+        .column("birth_date", |p: &Person| p.birth_date.as_str().into())
+        .build_postgres();
 
     let processor = PassThroughProcessor::<Person>::new();
 
@@ -208,7 +204,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### Writing to MySQL
 
 ```rust
-use spring_batch_rs::item::rdbc::mysql::MysqlItemWriterBuilder;
+use spring_batch_rs::item::rdbc::RdbcItemWriterBuilder;
 use spring_batch_rs::core::item::PassThroughProcessor;
 
 #[tokio::main]
@@ -219,18 +215,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .has_headers(true)
         .from_path("persons.csv")?;
 
-    let writer = MysqlItemWriterBuilder::new()
-        .pool(pool)
+    let writer = RdbcItemWriterBuilder::<Person>::new()
+        .mysql(&pool)
         .table("persons")
-        .binder(|query, person: &Person| {
-            query.push_values([person], |mut b, p| {
-                b.push_bind(&p.first_name)
-                 .push_bind(&p.last_name)
-                 .push_bind(&p.email)
-                 .push_bind(&p.birth_date);
-            });
-        })
-        .build();
+        .column("first_name", |p: &Person| p.first_name.as_str().into())
+        .column("last_name", |p: &Person| p.last_name.as_str().into())
+        .column("email", |p: &Person| p.email.as_str().into())
+        .column("birth_date", |p: &Person| p.birth_date.as_str().into())
+        .build_mysql();
 
     let processor = PassThroughProcessor::<Person>::new();
 
@@ -283,7 +275,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### Writing to SQLite
 
 ```rust
-use spring_batch_rs::item::rdbc::sqlite::SqliteItemWriterBuilder;
+use spring_batch_rs::item::rdbc::RdbcItemWriterBuilder;
 use spring_batch_rs::core::item::PassThroughProcessor;
 
 #[tokio::main]
@@ -293,18 +285,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let reader = JsonItemReaderBuilder::<Person>::new()
         .from_path("persons.json")?;
 
-    let writer = SqliteItemWriterBuilder::new()
-        .pool(pool)
+    let writer = RdbcItemWriterBuilder::<Person>::new()
+        .sqlite(&pool)
         .table("persons")
-        .binder(|query, person: &Person| {
-            query.push_values([person], |mut b, p| {
-                b.push_bind(&p.first_name)
-                 .push_bind(&p.last_name)
-                 .push_bind(&p.email)
-                 .push_bind(&p.birth_date);
-            });
-        })
-        .build();
+        .column("first_name", |p: &Person| p.first_name.as_str().into())
+        .column("last_name", |p: &Person| p.last_name.as_str().into())
+        .column("email", |p: &Person| p.email.as_str().into())
+        .column("birth_date", |p: &Person| p.birth_date.as_str().into())
+        .build_sqlite();
 
     let processor = PassThroughProcessor::<Person>::new();
 
@@ -340,18 +328,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Target: MySQL
     let mysql_pool = MySqlPool::connect("mysql://user:pass@localhost:3306/target_db").await?;
 
-    let writer = MysqlItemWriterBuilder::new()
-        .pool(mysql_pool)
+    let writer = RdbcItemWriterBuilder::<Person>::new()
+        .mysql(&mysql_pool)
         .table("persons")
-        .binder(|query, person: &Person| {
-            query.push_values([person], |mut b, p| {
-                b.push_bind(&p.first_name)
-                 .push_bind(&p.last_name)
-                 .push_bind(&p.email)
-                 .push_bind(&p.birth_date);
-            });
-        })
-        .build();
+        .column("first_name", |p: &Person| p.first_name.as_str().into())
+        .column("last_name", |p: &Person| p.last_name.as_str().into())
+        .column("email", |p: &Person| p.email.as_str().into())
+        .column("birth_date", |p: &Person| p.birth_date.as_str().into())
+        .build_mysql();
 
     let processor = PassThroughProcessor::<Person>::new();
 
@@ -378,6 +362,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ```rust
 use spring_batch_rs::core::item::{ItemProcessor, ItemProcessorResult};
+use spring_batch_rs::item::rdbc::RdbcItemWriterBuilder;
 use spring_batch_rs::error::BatchError;
 
 #[derive(Debug, Clone, FromRow)]
@@ -442,19 +427,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let processor = PersonProcessor;
 
-    let writer = PostgresItemWriterBuilder::new()
-        .pool(pool)
+    let writer = RdbcItemWriterBuilder::<ProcessedPerson>::new()
+        .postgres(&pool)
         .table("processed_persons")
-        .binder(|query, person: &ProcessedPerson| {
-            query.push_values([person], |mut b, p| {
-                b.push_bind(&p.id)
-                 .push_bind(&p.first_name)
-                 .push_bind(&p.last_name)
-                 .push_bind(&p.email)
-                 .push_bind(&p.email_domain);
-            });
-        })
-        .build();
+        .column("id", |p: &ProcessedPerson| p.id.into())
+        .column("first_name", |p: &ProcessedPerson| p.first_name.as_str().into())
+        .column("last_name", |p: &ProcessedPerson| p.last_name.as_str().into())
+        .column("email", |p: &ProcessedPerson| p.email.as_str().into())
+        .column("email_domain", |p: &ProcessedPerson| p.email_domain.as_str().into())
+        .build_postgres();
 
     let step = StepBuilder::new("transform-persons")
         .chunk::<RawPerson, ProcessedPerson>(100)
@@ -590,6 +571,7 @@ let step = StepBuilder::new("export-to-csv")
 
 ```rust
 use chrono::NaiveDate;
+use spring_batch_rs::item::rdbc::RdbcItemWriterBuilder;
 
 #[derive(Debug, Clone, FromRow)]
 struct TransactionSource {
@@ -676,22 +658,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Target: Data warehouse
     let dw_pool = PgPool::connect("postgres://user:pass@localhost/dw_db").await?;
 
-    let writer = PostgresItemWriterBuilder::new()
-        .pool(dw_pool)
+    let writer = RdbcItemWriterBuilder::<TransactionFact>::new()
+        .postgres(&dw_pool)
         .table("fact_transactions")
-        .binder(|query, fact: &TransactionFact| {
-            query.push_values([fact], |mut b, f| {
-                b.push_bind(&f.transaction_key)
-                 .push_bind(&f.customer_key)
-                 .push_bind(&f.product_key)
-                 .push_bind(&f.date_key)
-                 .push_bind(&f.quantity)
-                 .push_bind(&f.unit_price)
-                 .push_bind(&f.total_amount)
-                 .push_bind(&f.gross_profit);
-            });
-        })
-        .build();
+        .column("transaction_key", |f: &TransactionFact| f.transaction_key.into())
+        .column("customer_key", |f: &TransactionFact| f.customer_key.into())
+        .column("product_key", |f: &TransactionFact| f.product_key.into())
+        .column("date_key", |f: &TransactionFact| f.date_key.into())
+        .column("quantity", |f: &TransactionFact| f.quantity.into())
+        .column("unit_price", |f: &TransactionFact| f.unit_price.into())
+        .column("total_amount", |f: &TransactionFact| f.total_amount.into())
+        .column("gross_profit", |f: &TransactionFact| f.gross_profit.into())
+        .build_postgres();
 
     let step = StepBuilder::new("load-facts")
         .chunk::<TransactionSource, TransactionFact>(1000)

@@ -289,8 +289,8 @@ Migrate data from PostgreSQL to MySQL with transformation.
   <TabItem label="Complete Example">
     ```rust
     use spring_batch_rs::core::step::StepBuilder;
-    use spring_batch_rs::item::rdbc::RdbcItemReaderBuilder;
-    use spring_batch_rs::item::rdbc::RdbcItemWriterBuilder;
+    use spring_batch_rs::core::item::{ItemProcessor, ItemProcessorResult};
+    use spring_batch_rs::item::rdbc::{RdbcItemReaderBuilder, RdbcItemWriterBuilder};
     use sqlx::{PgPool, MySqlPool, FromRow};
     use serde::{Deserialize, Serialize};
 
@@ -315,13 +315,13 @@ Migrate data from PostgreSQL to MySQL with transformation.
 
     impl ItemProcessor<LegacyUser, ModernUser> for UserMigrationProcessor {
         fn process(&self, legacy: LegacyUser) -> ItemProcessorResult<ModernUser> {
-            Ok(Some(ModernUser {
+            Ok(ModernUser {
                 id: legacy.user_id,
                 username: legacy.username,
                 email: legacy.email,
                 created_timestamp: legacy.created_at.timestamp(),
                 migrated_at: chrono::Utc::now().timestamp(),
-            }))
+            })
         }
     }
 
@@ -334,23 +334,28 @@ Migrate data from PostgreSQL to MySQL with transformation.
 
         // Create reader
         let reader = RdbcItemReaderBuilder::<LegacyUser>::new()
-            .connection_pool(pg_pool)
+            .postgres(&pg_pool)
             .query("SELECT user_id, username, email, created_at FROM users ORDER BY user_id")
-            .page_size(500)
-            .build()?;
+            .with_page_size(500)
+            .build_postgres();
 
         // Create processor
         let processor = UserMigrationProcessor;
 
         // Create writer
         let writer = RdbcItemWriterBuilder::<ModernUser>::new()
-            .connection_pool(mysql_pool)
-            .sql("INSERT INTO users (id, username, email, created_timestamp, migrated_at) VALUES (?, ?, ?, ?, ?)")
-            .build()?;
+            .mysql(&mysql_pool)
+            .table("users")
+            .column("id", |u: &ModernUser| u.id.into())
+            .column("username", |u: &ModernUser| u.username.as_str().into())
+            .column("email", |u: &ModernUser| u.email.as_str().into())
+            .column("created_timestamp", |u: &ModernUser| u.created_timestamp.into())
+            .column("migrated_at", |u: &ModernUser| u.migrated_at.into())
+            .build_mysql();
 
         // Build and execute step
         let step = StepBuilder::new("migrate-users")
-            .chunk(500)
+            .chunk::<LegacyUser, ModernUser>(500)
             .reader(&reader)
             .processor(&processor)
             .writer(&writer)
@@ -371,25 +376,29 @@ Migrate data from PostgreSQL to MySQL with transformation.
         let mysql_pool = MySqlPool::connect("mysql://localhost/modern_db").await?;
 
         let reader = RdbcItemReaderBuilder::<LegacyUser>::new()
-            .connection_pool(pg_pool)
+            .postgres(&pg_pool)
             .query("SELECT user_id, username, email, created_at FROM users ORDER BY user_id")
-            .page_size(500)
-            .build()?;
+            .with_page_size(500)
+            .build_postgres();
 
         let processor = UserMigrationProcessor;
 
         let writer = RdbcItemWriterBuilder::<ModernUser>::new()
-            .connection_pool(mysql_pool)
-            .sql("INSERT INTO users (id, username, email, created_timestamp, migrated_at) VALUES (?, ?, ?, ?, ?)")
-            .build()?;
+            .mysql(&mysql_pool)
+            .table("users")
+            .column("id", |u: &ModernUser| u.id.into())
+            .column("username", |u: &ModernUser| u.username.as_str().into())
+            .column("email", |u: &ModernUser| u.email.as_str().into())
+            .column("created_timestamp", |u: &ModernUser| u.created_timestamp.into())
+            .column("migrated_at", |u: &ModernUser| u.migrated_at.into())
+            .build_mysql();
 
         let step = StepBuilder::new("migrate-users")
-            .chunk(500)
+            .chunk::<LegacyUser, ModernUser>(500)
             .reader(&reader)
             .processor(&processor)
             .writer(&writer)
             .skip_limit(100)  // Skip up to 100 problematic records
-            .retry_limit(3)    // Retry transient failures
             .build();
 
         let execution = step.execute()?;
@@ -398,7 +407,6 @@ Migrate data from PostgreSQL to MySQL with transformation.
         println!("  Total read: {}", execution.read_count);
         println!("  Migrated: {}", execution.write_count);
         println!("  Skipped: {}", execution.skip_count);
-        println!("  Failed: {}", execution.read_count - execution.write_count - execution.skip_count);
 
         Ok(())
     }

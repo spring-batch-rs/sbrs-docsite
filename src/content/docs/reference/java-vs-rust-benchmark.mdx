@@ -142,9 +142,14 @@ Total wall-clock time **includes CSV generation**.
     let writer = RdbcItemWriterBuilder::<Transaction>::new()
         .postgres(pool)
         .table("transactions_import")
-        .add_column("transaction_id")
-        // ... 8 columns total
-        .postgres_binder(&TransactionImportBinder)
+        .column("transaction_id", |t: &Transaction| t.transaction_id.clone().into())
+        .column("amount", |t: &Transaction| t.amount.into())
+        .column("currency", |t: &Transaction| t.currency.clone().into())
+        .column("timestamp", |t: &Transaction| t.timestamp.clone().into())
+        .column("account_from", |t: &Transaction| t.account_from.clone().into())
+        .column("account_to", |t: &Transaction| t.account_to.clone().into())
+        .column("status", |t: &Transaction| t.status.clone().into())
+        .column("amount_eur", |t: &Transaction| t.amount_eur.into())
         .build_postgres();
     ```
   </TabItem>
