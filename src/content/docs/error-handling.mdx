@@ -221,13 +221,13 @@ fn process_with_error_logging() -> Result<(), Box<dyn std::error::Error>> {
 ```rust
 use spring_batch_rs::core::step::StepBuilder;
 
-fn build_retry_step() -> Step {
-    StepBuilder::new("process-with-retry")
+fn build_tolerant_step() -> Step {
+    StepBuilder::new("process-with-skip")
         .chunk(100)
         .reader(&reader)
         .processor(&processor)
         .writer(&writer)
-        .retry_limit(3)  // Retry each failed item up to 3 times
+        .skip_limit(3)  // Skip up to 3 failed items
         .build()
 }
 ```
@@ -733,7 +733,7 @@ graph TB
     Acceptable -->|No| UseValidation[Pre-validate Data<br/>Fail-Fast]
 
     DataError -->|No| Transient{Transient<br/>Failure?}
-    Transient -->|Yes| UseRetry[Use Retry Strategy<br/>retry_limit + backoff]
+    Transient -->|Yes| UseRetry[Reduce Chunk Size<br/>or Fix Transient Issue]
     Transient -->|No| Critical{Critical<br/>Operation?}
 
     Critical -->|Yes| FailFast[Fail-Fast Strategy<br/>No skip/retry]

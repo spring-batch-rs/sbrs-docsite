@@ -144,18 +144,13 @@ let reader = RdbcItemReaderBuilder::<Record>::new()
 
 ```rust
 // Use bulk inserts with appropriate chunk size
-let writer = PostgresItemWriterBuilder::new()
-    .pool(pool)
+let writer = RdbcItemWriterBuilder::<Record>::new()
+    .postgres(&pool)
     .table("target_table")
-    .binder(|query, records: &Record| {
-        // Batch bind all records at once
-        query.push_values(records, |mut b, record| {
-            b.push_bind(&record.field1)
-             .push_bind(&record.field2)
-             .push_bind(&record.field3);
-        });
-    })
-    .build();
+    .column("field1", |r: &Record| r.field1.as_str().into())
+    .column("field2", |r: &Record| r.field2.as_str().into())
+    .column("field3", |r: &Record| r.field3.into())
+    .build_postgres();
 
 let step = StepBuilder::new("bulk-insert")
     .chunk::<Record, Record>(1000)  // Large chunks for bulk inserts
@@ -439,11 +434,11 @@ let reader = CsvItemReaderBuilder::new()
 
 let processor = SlowProcessor;  // Clones everything
 
-let writer = PostgresItemWriterBuilder::new()
-    .pool(small_pool)  // 2 connections only
+let writer = RdbcItemWriterBuilder::<Record>::new()
+    .postgres(&small_pool)  // 2 connections only
     .table("target")
-    .binder(|query, record| { /* ... */ })
-    .build();
+    .column("field1", |r: &Record| r.field1.as_str().into())
+    .build_postgres();
 
 let step = StepBuilder::new("slow")
     .chunk::<Record, Record>(10)  // Tiny chunks
@@ -472,17 +467,12 @@ let pool = PgPoolOptions::new()
     .max_connections(20)  // Larger pool
     .connect("...").await?;
 
-let writer = PostgresItemWriterBuilder::new()
-    .pool(pool)
+let writer = RdbcItemWriterBuilder::<Record>::new()
+    .postgres(&pool)
     .table("target")
-    .binder(|query, records| {
-        // Bulk insert all records
-        query.push_values(records, |mut b, r| {
-            b.push_bind(&r.field1)
-             .push_bind(&r.field2);
-        });
-    })
-    .build();
+    .column("field1", |r: &Record| r.field1.as_str().into())
+    .column("field2", |r: &Record| r.field2.into())
+    .build_postgres();
 
 let step = StepBuilder::new("fast")
     .chunk::<Record, Record>(1000)  // Large chunks

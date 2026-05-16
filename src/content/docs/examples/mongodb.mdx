@@ -242,7 +242,7 @@ impl ItemProcessor<RawBook, ProcessedBook> for BookProcessor {
 
 ```rust
 use sqlx::PgPool;
-use spring_batch_rs::item::rdbc::postgres::PostgresItemWriterBuilder;
+use spring_batch_rs::item::rdbc::RdbcItemWriterBuilder;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -260,18 +260,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Target: PostgreSQL
     let pg_pool = PgPool::connect("postgres://user:pass@localhost/library_db").await?;
 
-    let writer = PostgresItemWriterBuilder::new()
-        .pool(pg_pool)
+    let writer = RdbcItemWriterBuilder::<Book>::new()
+        .postgres(&pg_pool)
         .table("books")
-        .binder(|query, book: &Book| {
-            query.push_values([book], |mut b, book| {
-                b.push_bind(&book.title)
-                 .push_bind(&book.author)
-                 .push_bind(&book.isbn)
-                 .push_bind(&book.year);
-            });
-        })
-        .build();
+        .column("title", |b: &Book| b.title.as_str().into())
+        .column("author", |b: &Book| b.author.as_str().into())
+        .column("isbn", |b: &Book| b.isbn.as_str().into())
+        .column("year", |b: &Book| b.year.into())
+        .build_postgres();
 
     let step = StepBuilder::new("mongodb-to-postgres")
         .chunk::<Book, Book>(200)

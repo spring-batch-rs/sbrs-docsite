@@ -202,7 +202,6 @@ fn build_fault_tolerant_step(
         .processor(&OrderValidator)
         .writer(&writer)
         .skip_limit(10)  // Skip up to 10 invalid orders
-        .retry_limit(3)   // Retry failed items 3 times
         .build()
 }
 ```

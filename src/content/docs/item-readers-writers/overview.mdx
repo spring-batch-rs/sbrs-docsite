@@ -115,29 +115,23 @@ let writer = JsonItemWriterBuilder::<MyType>::new()
 ### Database Reader (RDBC)
 
 ```rust
-use spring_batch_rs::item::rdbc::rdbc_reader::{RdbcItemReaderBuilder, RdbcRowMapper};
-use sqlx::{AnyPool, Row};
+use spring_batch_rs::item::rdbc::RdbcItemReaderBuilder;
+use sqlx::{PgPool, FromRow};
 
-struct ProductRowMapper;
-
-impl RdbcRowMapper<Product> for ProductRowMapper {
-    fn map_row(&self, row: &sqlx::any::AnyRow) -> Product {
-        Product {
-            id: row.get("id"),
-            name: row.get("name"),
-            price: row.get("price"),
-        }
-    }
+#[derive(Debug, Clone, FromRow)]
+struct Product {
+    id: i64,
+    name: String,
+    price: f64,
 }
 
-let pool = AnyPool::connect("postgresql://user:pass@localhost/db").await?;
+let pool = PgPool::connect("postgresql://user:pass@localhost/db").await?;
 
-let reader = RdbcItemReaderBuilder::new()
-    .pool(&pool)
-    .query("SELECT id, name, price FROM products")
-    .page_size(1000)
-    .row_mapper(&ProductRowMapper)
-    .build();
+let reader = RdbcItemReaderBuilder::<Product>::new()
+    .postgres(pool)
+    .query("SELECT id, name, price FROM products ORDER BY id")
+    .with_page_size(1000)
+    .build_postgres();
 ```
 
 ## Custom Readers & Writers
@@ -213,9 +207,11 @@ Choose appropriate chunk sizes based on your data and memory:
 For database readers, configure page sizes to optimize memory:
 
 ```rust
-let reader = RdbcItemReaderBuilder::new()
-    .page_size(500)  // Fetch 500 records at a time
-    .build();
+let reader = RdbcItemReaderBuilder::<Record>::new()
+    .postgres(pool)
+    .query("SELECT * FROM records ORDER BY id")
+    .with_page_size(500)  // Fetch 500 records at a time
+    .build_postgres();
 ```
 
 ### Buffered I/O

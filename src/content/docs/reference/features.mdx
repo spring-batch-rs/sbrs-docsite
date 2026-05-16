@@ -397,7 +397,7 @@ Use conditional compilation for feature-specific code:
 use spring_batch_rs::item::csv::CsvItemReaderBuilder;
 
 #[cfg(feature = "rdbc-postgres")]
-use spring_batch_rs::item::rdbc::postgres::PostgresItemWriterBuilder;
+use spring_batch_rs::item::rdbc::RdbcItemWriterBuilder;
 
 fn create_reader() -> Box<dyn ItemReader<MyType>> {
     #[cfg(feature = "csv")]
